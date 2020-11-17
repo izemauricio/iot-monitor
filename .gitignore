@@ -1,3 +1,4 @@
 .DS_Store
 *.secret
 iot-monitor-nodejs/database.json
+iot-monitor-nodemcu-weather/auth.secret.h

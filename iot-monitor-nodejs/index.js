@@ -1,3 +1,4 @@
+const secret = require('./auth.secret');
 const low = require('lowdb');
 const FileSync = require('lowdb/adapters/FileSync')
 const adapter = new FileSync('database.json')
@@ -9,6 +10,7 @@ const cors = require('cors');
 const express = require('express');
 const app = express();
 app.use(cors());
+
 app.use(function (req, res, next) {
     const { method, url } = req; // originalUrl
     const mem = process.memoryUsage();
@@ -48,6 +50,14 @@ function getTimestamp() {
     return { timestamp, unixtime };
 }
 
+function hasApiKeyHasAuthorization(apikey) {
+    if (apikey !== secret.apikey) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
 /*
 var date = new Date(unix_timestamp * 1000);
 // Hours part from the timestamp
@@ -67,6 +77,9 @@ app.get('/saveweather', async (request, response) => {
     console.log('GET /saveweather');
 
     const apikey = request.query.apikey || '0';
+    if (hasApiKeyHasAuthorization(apikey) !== true) {
+        return response.status(401).send('Sem autorizacao');
+    }
 
     // server timestamp
     const timestamp = getTimestamp();
@@ -94,10 +107,10 @@ app.get('/saveweather', async (request, response) => {
     const magdirection = request.query.direction || 'XXX';
 
     // mq5 mq7
-    const mq5 = request.query.mq5;
-    const mq5ppm = request.query.mq5ppm;
-    const mq7 = request.query.mq7;
-    const mq7ppm = request.query.mq7ppm;
+    const mq5 = request.query.mq5 || '0';
+    const mq5ppm = request.query.mq5ppm || '0';
+    const mq7 = request.query.mq7 || '0';
+    const mq7ppm = request.query.mq7ppm || '0';
 
     // tiny rtc timer
     nodeunixtime = request.query.unixtime || '0'; // coloquei UTC time no tinyrtc pois javascript Date() espera UTC e nao localtime
@@ -176,6 +189,10 @@ app.get('/savepower', async (request, response) => {
     }
 
     const apikey = request.query.apikey || '0';
+    if (hasApiKeyHasAuthorization(apikey) !== true) {
+        return response.status(401).send('Sem autorizacao');
+    }
+
     const valueCurrent = request.query.current || '0';
     const valueA0 = request.query.a0 || '0';
     const valuePower = request.query.power || '0';
@@ -212,7 +229,7 @@ app.get('/savepower', async (request, response) => {
         totalEnergy: newTotalEnergy,
         duration: valueDuration,
     };
-    
+
     console.log('NEW_ROW:');
     console.log(newRow);
 

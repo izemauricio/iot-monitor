@@ -3,6 +3,12 @@
 
   Mauricio Ize - mauriciodcjz@gmail.com
 
+  ARUDINO IDE
+  - Tools > NodeMCU 1.0 ESP-12E module
+  - Upload speed 115200
+  - Port: usb serial
+
+
   WEATHER MONITOR
   - NodeMCU 12E LOLIN-V3 (SDA = D2 = GPIO4, SCL = D1 = GPIO5)
       - BME280 GY-BM (vcc gnd scl sda csb sdd) [Celsius, hPA, %]
@@ -34,6 +40,16 @@
   - Importar token de auth do arquivo sem subir para github
   - Remover PT from comments and strings
 */
+
+// AUTHORIZATION
+#include "auth.secret.h"
+#ifdef DEFINE_CONST_STR_API_KEY
+#else
+#define DEFINE_CONST_STR_API_KEY "NAO_DEFINIDO"
+#endif
+const char *CONST_STR_API_KEY = DEFINE_CONST_STR_API_KEY;
+
+const int MAX_LOOP_BEFORE_RESTART = 10;
 
 // LED BUILT IN DO NODEMCU
 #define BUILT_IN_LED D4
@@ -78,28 +94,31 @@ char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursd
 	now(); // Returns the current time as seconds since midnight Jan 1 197
 */
 
+// auto restart after some loops
+long long loopCount = 0;
+
 // LED RGB
 #define RGB_R D5
 #define RGB_G D6
 #define RGB_B D7
 enum COLORID
 {
-	RED,
-	GREEN,
-	BLUE,
-	MAGENTA,
-	CYAN,
-	YELLOW,
-	WHITE
+  RED,
+  GREEN,
+  BLUE,
+  MAGENTA,
+  CYAN,
+  YELLOW,
+  WHITE
 };
 int COLORRGB[7][3] = {
-	{1, 0, 0}, // red
-	{0, 1, 0}, // green
-	{0, 0, 1}, // blue
-	{1, 0, 1}, // magenta
-	{0, 1, 1}, // cyan
-	{1, 1, 0}, // yellow
-	{1, 1, 1} // white
+  {1, 0, 0}, // red
+  {0, 1, 0}, // green
+  {0, 0, 1}, // blue
+  {1, 0, 1}, // magenta
+  {0, 1, 1}, // cyan
+  {1, 1, 0}, // yellow
+  {1, 1, 1} // white
 };
 
 /*
@@ -127,10 +146,10 @@ Adafruit_BME280 bme;
 Adafruit_BMP280 bmp;
 struct BME_VALUES
 {
-	double temp;
-	double humi;
-	double pres;
-	double alti;
+  double temp;
+  double humi;
+  double pres;
+  double alti;
 };
 
 // Luminosity GY-30 BH1750 (gnd vcc sda scl ad0)
@@ -150,338 +169,365 @@ int SERVER_PORT = 33000;
 // data wrapper
 struct sensor_values_t
 {
-	// wifi
-	bool isWifiOk = false;
-	bool isServerOk = false;
-	bool isSensorOk1 = false; // bme
-	bool isSensorOk2 = false; // bmp
-	bool isSensorOk3 = false; // lux
-	bool isSensorOk4 = false; // mag
-	bool isSensorOk5 = false; // tiny rtc
-	bool isSensorOk6 = false; // a0 hub com mq5 no ad0 e mq7 no ad1
+  // wifi
+  bool isWifiOk = false;
+  bool isServerOk = false;
+  bool isSensorOk1 = false; // bme
+  bool isSensorOk2 = false; // bmp
+  bool isSensorOk3 = false; // lux
+  bool isSensorOk4 = false; // mag
+  bool isSensorOk5 = false; // tiny rtc
+  bool isSensorOk6 = false; // a0 hub com mq5 no ad0 e mq7 no ad1
 
-	// bme280
-	double temp = -1.0;
-	double humi = -1.0;
-	double pres = -1.0;
-	double alti = -1.0;
+  // bme280
+  double temp = -1.0;
+  double humi = -1.0;
+  double pres = -1.0;
+  double alti = -1.0;
 
-	// bmp280
-	double temp2 = -1.0;
-	double pres2 = -1.0;
-	double alti2 = -1.0;
+  // bmp280
+  double temp2 = -1.0;
+  double pres2 = -1.0;
+  double alti2 = -1.0;
 
-	// gy-30
-	double lux = -1.0;
+  // gy-30
+  double lux = -1.0;
 
-	// mag
-	int mag_x = -1;
-	int mag_y = -1;
-	int mag_z = -1;
-	int mag_azimuth = -1; // int degree
-	int mag_bearing = -1; // 0-15
-	char mag_direction[4] = "a\n"; // N S E W ...
+  // mag
+  int mag_x = -1;
+  int mag_y = -1;
+  int mag_z = -1;
+  int mag_azimuth = -1; // int degree
+  int mag_bearing = -1; // 0-15
+  char mag_direction[4] = "a\n"; // N S E W ...
 
-	// tiny rtc
-	int year = -1;
-	int mes = -1;
-	int day = -1;
-	int hour = -1;
-	int minute = -1;
-	int second = -1;
-	int dayofweek = -1;
-	long secondsSince1970 = -1;
-	long daysSince1970 = -1;
+  // tiny rtc
+  int year = -1;
+  int mes = -1;
+  int day = -1;
+  int hour = -1;
+  int minute = -1;
+  int second = -1;
+  int dayofweek = -1;
+  long secondsSince1970 = -1;
+  long daysSince1970 = -1;
 
-	// a0 expansor (mq5 e mq7)
-	int mq5 = -1; // ad0 raw 0-65535
-	double mq5ppm = -1.0;
-	int mq7 = -1; // ad0 raw 0-65535
-	double mq7ppm = -1.0;
+  // a0 expansor (mq5 e mq7)
+  int mq5 = -1; // ad0 raw 0-65535
+  double mq5ppm = -1.0;
+  int mq7 = -1; // ad0 raw 0-65535
+  double mq7ppm = -1.0;
 };
 
 void setup()
 {
-	setupSerialMonitor();
-	setupWifi();
-	setupBuiltInLed();
-	setupRGB();
-	setupRTC();
-	setupLumi();
-	setupBME280();
-	setupBMP280();
-	// setupBussola(); // comprei esse, mas veio uma verso da china, o QMC
-	setupBussolaQMC();
-	setupADS();
+  setupSerialMonitor();
+  setupWifi();
+  setupBuiltInLed();
+  setupRGB();
+  setupRTC();
+  setupLumi();
+  setupBME280();
+  setupBMP280();
+  // setupBussola(); // comprei esse, mas veio uma verso da china, o QMC
+  setupBussolaQMC();
+  setupADS();
 }
 
 void loop()
 {
-	struct sensor_values_t sensor_values;
+  Serial.println("1");
 
-	// blink blue 1s once to tell we are starting the loop
-	blinkRGB(BLUE, 2000, 1); // (color, duration in ms, quantity)
+  Serial.println("Loop()");
 
-	// rainbow();
-	// printScannerI2C();
-	blinkBuiltInLed();
-	blinkRGB(CYAN, 500, 1);
-	printBME280(&sensor_values);
-	blinkRGB(CYAN, 500, 1);
-	printBMP280(&sensor_values);
-	blinkRGB(CYAN, 500, 1);
-	printLumi(&sensor_values);
-	blinkRGB(CYAN, 500, 1);
-	printBussolaQMC(&sensor_values);
-	blinkRGB(CYAN, 500, 1);
-	printRTCstring(&sensor_values);
-	blinkRGB(CYAN, 500, 1);
-	readADS(&sensor_values); // no expansor de a0 tem o mq5 e mq7 conectado
-	blinkRGB(CYAN, 500, 1);
+  blinkRGB(YELLOW, 500, 4); // (color, duration in ms, times to repeat)
 
-	// blink red 500ms twice to tell some sensor went wrong
-	// blink green 500ms twice to tell all sensor are good
-	blinkRGB(GREEN, 2000, 1);
+  Serial.println("2");
 
-	// blink white 1s once to tell we are going to send to server
-	blinkRGB(WHITE, 2000, 1);
-	int r = sendValuesToServer(&sensor_values);
-	if(r < 0)
-	{
-		blinkRGB(RED, 10000, 1);
-		hardResetNodemcu();
-	}
-	else
-	{
-		blinkRGB(GREEN, 2000, 1);
-	}
+  loopCount++;
+  if (loopCount > MAX_LOOP_BEFORE_RESTART) {
+    Serial.println("3");
+    Serial.println("Vai restartar!");
+    hardResetNodemcu();
+  } else {
+    Serial.println("4");
+    Serial.println("Nao vai restartar");
+  }
+
+  struct sensor_values_t sensor_values;
+
+  // blink blue 1s once to tell we are starting the loop
+  blinkRGB(BLUE, 500, 4); // (color, duration in ms, times to repeat)
+
+  Serial.println("5");
+
+  // rainbow();
+  // printScannerI2C();
+  blinkBuiltInLed();
+  blinkRGB(CYAN, 500, 1);
+  printBME280(&sensor_values);
+  blinkRGB(CYAN, 500, 1);
+  printBMP280(&sensor_values);
+  blinkRGB(CYAN, 500, 1);
+  printLumi(&sensor_values);
+  blinkRGB(CYAN, 500, 1);
+  printBussolaQMC(&sensor_values);
+  blinkRGB(CYAN, 500, 1);
+  printRTCstring(&sensor_values);
+  blinkRGB(CYAN, 500, 1);
+  readADS(&sensor_values); // no expansor de a0 tem o mq5 e mq7 conectado
+  blinkRGB(CYAN, 500, 1);
+
+  Serial.println("6");
+
+  // blink red 500ms twice to tell some sensor went wrong
+  // blink green 500ms twice to tell all sensor are good
+  blinkRGB(GREEN, 500, 4);
+
+  Serial.println("7");
+  // blink white 1s once to tell we are going to send to server
+  blinkRGB(WHITE, 500, 4);
+  int r = sendValuesToServer(&sensor_values);
+  
+  Serial.println("8");
+  if (r < 0)
+  {
+    Serial.println("9");
+    blinkRGB(RED, 500, 10);
+    hardResetNodemcu();
+  }
+  else
+  {
+    Serial.println("10");
+    blinkRGB(GREEN, 500, 4);
+  }
 }
 
 void printRTCstring(struct sensor_values_t* ptr_sensor_values)
 {
-	DateTime now = rtc.now();
+  DateTime now = rtc.now();
 
-	int year = (int)now.year();
-	int mes = (int)now.month();
-	int day = (int)now.day();
-	int hour = (int)now.hour();
-	int minute = (int)now.minute();
-	int second = (int)now.second();
-	int dayofweek = (int)now.dayOfTheWeek();
-	long secondsSince1970 = now.unixtime();
-	long daysSince1970 = now.unixtime() / 86400L;
+  int year = (int)now.year();
+  int mes = (int)now.month();
+  int day = (int)now.day();
+  int hour = (int)now.hour();
+  int minute = (int)now.minute();
+  int second = (int)now.second();
+  int dayofweek = (int)now.dayOfTheWeek();
+  long secondsSince1970 = now.unixtime();
+  long daysSince1970 = now.unixtime() / 86400L;
 
-	ptr_sensor_values->year = year;
-	ptr_sensor_values->mes = mes;
-	ptr_sensor_values->day = day;
-	ptr_sensor_values->hour = hour;
-	ptr_sensor_values->minute = minute;
-	ptr_sensor_values->second = second;
-	ptr_sensor_values->dayofweek = dayofweek;
-	ptr_sensor_values->secondsSince1970 = secondsSince1970;
-	ptr_sensor_values->daysSince1970 = daysSince1970;
+  ptr_sensor_values->year = year;
+  ptr_sensor_values->mes = mes;
+  ptr_sensor_values->day = day;
+  ptr_sensor_values->hour = hour;
+  ptr_sensor_values->minute = minute;
+  ptr_sensor_values->second = second;
+  ptr_sensor_values->dayofweek = dayofweek;
+  ptr_sensor_values->secondsSince1970 = secondsSince1970;
+  ptr_sensor_values->daysSince1970 = daysSince1970;
 
-	// Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
-	// DateTime future (now + TimeSpan(1, 12, 30, 6)); // Compute date now +
-	// (1day, 12h, 30min, 6s) Serial.print(future.year(), DEC);
+  // Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
+  // DateTime future (now + TimeSpan(1, 12, 30, 6)); // Compute date now +
+  // (1day, 12h, 30min, 6s) Serial.print(future.year(), DEC);
 }
 
 void setupRTC()
 {
-	if(!rtc.begin())
-	{
-		Serial.println("Couldn't find RTC");
-		Serial.flush();
-		// abort();
-	}
-	else
-	{
-		Serial.println("RTC is OK");
-	}
+  if (!rtc.begin())
+  {
+    Serial.println("Couldn't find RTC");
+    Serial.flush();
+    // abort();
+  }
+  else
+  {
+    Serial.println("RTC is OK");
+  }
 
-	if(!rtc.isrunning())
-	{
-		Serial.println("RTC is NOT running, let's set the time!");
-		// When time needs to be set on a new device, or after a power loss, the
-		// following line sets the RTC to the date & time this sketch was compiled
-		// rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-		// This line sets the RTC with an explicit date & time, for example to set
-		// January 21, 2014 at 3am you would call:
-		// rtc.adjust(DateTime(2020, 8, 8, 1, 52, 0));
-	}
-	else
-	{
-		Serial.println("RTC is running!");
-	}
-	// rtc.adjust(DateTime(2020, 8, 8, 1, 52, 0)); // coloquei UTC time
+  if (!rtc.isrunning())
+  {
+    Serial.println("RTC is NOT running, let's set the time!");
+    // When time needs to be set on a new device, or after a power loss, the
+    // following line sets the RTC to the date & time this sketch was compiled
+    // rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    // This line sets the RTC with an explicit date & time, for example to set
+    // January 21, 2014 at 3am you would call:
+    // rtc.adjust(DateTime(2020, 8, 8, 1, 52, 0));
+  }
+  else
+  {
+    Serial.println("RTC is running!");
+  }
+  // rtc.adjust(DateTime(2020, 8, 8, 1, 52, 0)); // coloquei UTC time
 }
 
 void rainbow()
 {
-	for(int i = 0; i < 7; i++)
-	{
-		blinkRGB((enum COLORID)i, 1000, 1);
-	}
+  for (int i = 0; i < 7; i++)
+  {
+    blinkRGB((enum COLORID)i, 1000, 1);
+  }
 }
 
 void readADS(struct sensor_values_t* ptr_sensor_values)
 {
-	// read ADC
-	int16_t adc0, adc1, adc2, adc3;
-	adc0 = ads.readADC_SingleEnded(0); // mq5 (glp, gn)
-	adc1 = ads.readADC_SingleEnded(1); // mq7 (co)
-	adc2 = ads.readADC_SingleEnded(2); // not used, grounded
-	adc3 = ads.readADC_SingleEnded(3); // not used, grounded
+  // read ADC
+  int16_t adc0, adc1, adc2, adc3;
+  adc0 = ads.readADC_SingleEnded(0); // mq5 (glp, gn)
+  adc1 = ads.readADC_SingleEnded(1); // mq7 (co)
+  adc2 = ads.readADC_SingleEnded(2); // not used, grounded
+  adc3 = ads.readADC_SingleEnded(3); // not used, grounded
 
-	ptr_sensor_values->mq5 = adc0;
-	ptr_sensor_values->mq7 = adc1;
+  ptr_sensor_values->mq5 = adc0;
+  ptr_sensor_values->mq7 = adc1;
 
-	// mq7 reader
-	double coeficienteA = 19.32; // datasheet
-	double coeficienteB = -0.64; // datasheet
-	double v_in = 5.0;
-	double maxRangeA0 = 65535.0;
-	double v_out = adc1 * (v_in / maxRangeA0);
-	double ratio = (v_in - v_out) / v_out;
-	double ppm = (coeficienteA * pow(ratio, coeficienteB));
-	Serial.print("MQ7 (ppm): ");
-	Serial.println(ppm);
+  // mq7 reader
+  double coeficienteA = 19.32; // datasheet
+  double coeficienteB = -0.64; // datasheet
+  double v_in = 5.0;
+  double maxRangeA0 = 65535.0;
+  double v_out = adc1 * (v_in / maxRangeA0);
+  double ratio = (v_in - v_out) / v_out;
+  double ppm = (coeficienteA * pow(ratio, coeficienteB));
+  Serial.print("MQ7 (ppm): ");
+  Serial.println(ppm);
 
-	ptr_sensor_values->mq7ppm = ppm;
+  ptr_sensor_values->mq7ppm = ppm;
 
-	Serial.print("AIN0 mq5 (GN e GLP): ");
-	Serial.println(adc0);
-	Serial.print("AIN1 mq7 (CO): ");
-	Serial.println(adc1);
-	Serial.print("AIN2: ");
-	Serial.println(adc2);
-	Serial.print("AIN3: ");
-	Serial.println(adc3);
-	Serial.println(" ");
+  Serial.print("AIN0 mq5 (GN e GLP): ");
+  Serial.println(adc0);
+  Serial.print("AIN1 mq7 (CO): ");
+  Serial.println(adc1);
+  Serial.print("AIN2: ");
+  Serial.println(adc2);
+  Serial.print("AIN3: ");
+  Serial.println(adc3);
+  Serial.println(" ");
 }
 
 void setupADS()
 {
-	ads.begin();
+  ads.begin();
 }
 
 void printScannerI2C()
 {
-	byte error, address;
-	int nDevices;
+  byte error, address;
+  int nDevices;
 
-	Serial.println("Scanning...");
-	nDevices = 0;
-	for(address = 1; address < 127; address++)
-	{
-		Wire.beginTransmission(address);
-		error = Wire.endTransmission();
+  Serial.println("Scanning...");
+  nDevices = 0;
+  for (address = 1; address < 127; address++)
+  {
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
 
-		if(error == 0)
-		{
-			Serial.print("I2C device found at address 0x");
+    if (error == 0)
+    {
+      Serial.print("I2C device found at address 0x");
 
-			if(address < 16)
-				Serial.print("0");
+      if (address < 16)
+        Serial.print("0");
 
-			Serial.print(address, HEX);
-			Serial.println(" !");
+      Serial.print(address, HEX);
+      Serial.println(" !");
 
-			nDevices++;
-		}
+      nDevices++;
+    }
 
-		else if(error == 4)
-		{
-			Serial.print("Unknow error at address 0x");
-			if(address < 16)
-				Serial.print("0");
-			Serial.println(address, HEX);
-		}
-	}
+    else if (error == 4)
+    {
+      Serial.print("Unknow error at address 0x");
+      if (address < 16)
+        Serial.print("0");
+      Serial.println(address, HEX);
+    }
+  }
 
-	if(nDevices == 0)
-		Serial.println("-- NO i2C FOUND --\n");
-	else
-		Serial.println("DONE\n");
+  if (nDevices == 0)
+    Serial.println("-- NO i2C FOUND --\n");
+  else
+    Serial.println("DONE\n");
 
-	delay(5000);
+  delay(5000);
 }
 
 void setupBussolaQMC()
 {
-	compass.init();
+  compass.init();
 }
 
 void printBussolaQMC(struct sensor_values_t* ptr_sensor_values)
 {
-	compass.read();
-	int x = compass.getX();
-	int y = compass.getY();
-	int z = compass.getZ();
-	int azimuth = compass.getAzimuth();
-	int bearing = (int)compass.getBearing(azimuth); // byte to int
-	char ptr_mag_direction[4];
-	ptr_mag_direction[3] = '\0';
-	compass.getDirection(ptr_mag_direction, azimuth);
+  compass.read();
+  int x = compass.getX();
+  int y = compass.getY();
+  int z = compass.getZ();
+  int azimuth = compass.getAzimuth();
+  int bearing = (int)compass.getBearing(azimuth); // byte to int
+  char ptr_mag_direction[4];
+  ptr_mag_direction[3] = '\0';
+  compass.getDirection(ptr_mag_direction, azimuth);
 
-	ptr_sensor_values->mag_x = x;
-	ptr_sensor_values->mag_y = y;
-	ptr_sensor_values->mag_z = z;
-	ptr_sensor_values->mag_azimuth = azimuth;
-	ptr_sensor_values->mag_bearing = bearing;
-	ptr_sensor_values->mag_direction[0] = ptr_mag_direction[0];
-	ptr_sensor_values->mag_direction[1] = ptr_mag_direction[1];
-	ptr_sensor_values->mag_direction[2] = ptr_mag_direction[2];
-	ptr_sensor_values->mag_direction[3] = '\0';
+  ptr_sensor_values->mag_x = x;
+  ptr_sensor_values->mag_y = y;
+  ptr_sensor_values->mag_z = z;
+  ptr_sensor_values->mag_azimuth = azimuth;
+  ptr_sensor_values->mag_bearing = bearing;
+  ptr_sensor_values->mag_direction[0] = ptr_mag_direction[0];
+  ptr_sensor_values->mag_direction[1] = ptr_mag_direction[1];
+  ptr_sensor_values->mag_direction[2] = ptr_mag_direction[2];
+  ptr_sensor_values->mag_direction[3] = '\0';
 
-	Serial.print("X: ");
-	Serial.print(x);
-	Serial.print("  ");
-	Serial.print("Y: ");
-	Serial.print(y);
-	Serial.print("  ");
-	Serial.print("Z: ");
-	Serial.print(z);
-	Serial.print("  ");
-	Serial.println("uT");
+  Serial.print("X: ");
+  Serial.print(x);
+  Serial.print("  ");
+  Serial.print("Y: ");
+  Serial.print(y);
+  Serial.print("  ");
+  Serial.print("Z: ");
+  Serial.print(z);
+  Serial.print("  ");
+  Serial.println("uT");
 
-	Serial.print("AZIMUTH: ");
-	Serial.print(azimuth);
-	Serial.print("  ");
-	Serial.print("BEARING: ");
-	Serial.print(bearing);
-	Serial.print("  ");
-	Serial.print("DIRECTION: ");
-	Serial.print(ptr_mag_direction);
-	Serial.println("");
+  Serial.print("AZIMUTH: ");
+  Serial.print(azimuth);
+  Serial.print("  ");
+  Serial.print("BEARING: ");
+  Serial.print(bearing);
+  Serial.print("  ");
+  Serial.print("DIRECTION: ");
+  Serial.print(ptr_mag_direction);
+  Serial.println("");
 
-	struct _event
-	{
-		struct _magnetic
-		{
-			int x;
-			int y;
-			int z;
-		} magnetic;
-	};
+  struct _event
+  {
+    struct _magnetic
+    {
+      int x;
+      int y;
+      int z;
+    } magnetic;
+  };
 
-	struct _event event = {{x, y, z}};
+  struct _event event = {{x, y, z}};
 
-	Serial.print("X: ");
-	Serial.print(event.magnetic.x);
-	Serial.print("  ");
-	Serial.print("Y: ");
-	Serial.print(event.magnetic.y);
-	Serial.print("  ");
-	Serial.print("Z: ");
-	Serial.print(event.magnetic.z);
-	Serial.print("  ");
-	Serial.println("uT");
+  Serial.print("X: ");
+  Serial.print(event.magnetic.x);
+  Serial.print("  ");
+  Serial.print("Y: ");
+  Serial.print(event.magnetic.y);
+  Serial.print("  ");
+  Serial.print("Z: ");
+  Serial.print(event.magnetic.z);
+  Serial.print("  ");
+  Serial.println("uT");
 }
 
 void printBussola()
 {
-	/*
+  /*
     sensors_event_t event;
     mag.getEvent(&event);
 
@@ -517,16 +563,16 @@ void printBussola()
 
 void printLumi(struct sensor_values_t* ptr_sensor_values)
 {
-	float lux = lightMeter.readLightLevel();
-	ptr_sensor_values->lux = lux;
-	Serial.print("Light: ");
-	Serial.print(lux);
-	Serial.println(" lx");
+  float lux = lightMeter.readLightLevel();
+  ptr_sensor_values->lux = lux;
+  Serial.print("Light: ");
+  Serial.print(lux);
+  Serial.println(" lx");
 }
 
 void setupBussola()
 {
-	/*
+  /*
     if (!mag.begin())
     {
     Serial.println("Ooops, no HMC5883 detected ... Check your wiring!");
@@ -539,7 +585,7 @@ void setupBussola()
 
 void displaySensorDetails()
 {
-	/*
+  /*
     sensor_t sensor;
     mag.getSensor(&sensor);
     Serial.println("------------------------------------");
@@ -558,16 +604,16 @@ void displaySensorDetails()
 
 void blinkRGB(enum COLORID color, int duration, int quantity)
 {
-	if(quantity < 1)
-		return;
-	if(duration > 5000)
-		return;
-	if(duration < 50)
-		return;
+  if (quantity < 1)
+    return;
+  if (duration > 5000)
+    return;
+  if (duration < 50)
+    return;
 
-	int* RGB = COLORRGB[color];
+  int* RGB = COLORRGB[color];
 
-	/*
+  /*
     Serial.println("blinkRGB:");
     Serial.print(" R:");Serial.println(RGB[0]);
     Serial.print(" G:");Serial.println(RGB[1]);
@@ -577,262 +623,271 @@ void blinkRGB(enum COLORID color, int duration, int quantity)
     Serial.print(" color:");Serial.println(color);
   */
 
-	for(int i = 0; i < quantity; i++)
-	{
-		// turn on
-		digitalWrite(RGB_R, RGB[0]);
-		digitalWrite(RGB_G, RGB[1]);
-		digitalWrite(RGB_B, RGB[2]);
-		delay(duration);
+  for (int i = 0; i < quantity; i++)
+  {
+    // turn on
+    digitalWrite(RGB_R, RGB[0]);
+    digitalWrite(RGB_G, RGB[1]);
+    digitalWrite(RGB_B, RGB[2]);
+    delay(duration);
 
-		// turn off
-		digitalWrite(RGB_R, LOW);
-		digitalWrite(RGB_G, LOW);
-		digitalWrite(RGB_B, LOW);
-		delay(duration);
-	}
+    // turn off
+    digitalWrite(RGB_R, LOW);
+    digitalWrite(RGB_G, LOW);
+    digitalWrite(RGB_B, LOW);
+    delay(duration);
+  }
 }
 
 void setupRGB()
 {
-	pinMode(RGB_R, OUTPUT);
-	pinMode(RGB_G, OUTPUT);
-	pinMode(RGB_B, OUTPUT);
+  pinMode(RGB_R, OUTPUT);
+  pinMode(RGB_G, OUTPUT);
+  pinMode(RGB_B, OUTPUT);
 }
 
 void setupLumi()
 {
-	lightMeter.begin();
-	Serial.println(F("BH1750 Test"));
+  lightMeter.begin();
+  Serial.println(F("BH1750 Test"));
 }
 
 void printBME280(struct sensor_values_t* ptr_sensor_values)
 {
-	struct BME_VALUES* ptrBmeValues = (struct BME_VALUES*)malloc(sizeof(struct BME_VALUES));
-	readBME280(ptrBmeValues);
+  struct BME_VALUES* ptrBmeValues = (struct BME_VALUES*)malloc(sizeof(struct BME_VALUES));
+  readBME280(ptrBmeValues);
 
-	ptr_sensor_values->temp = ptrBmeValues->temp;
-	ptr_sensor_values->humi = ptrBmeValues->humi;
-	ptr_sensor_values->pres = ptrBmeValues->pres;
-	ptr_sensor_values->alti = ptrBmeValues->alti;
+  ptr_sensor_values->temp = ptrBmeValues->temp;
+  ptr_sensor_values->humi = ptrBmeValues->humi;
+  ptr_sensor_values->pres = ptrBmeValues->pres;
+  ptr_sensor_values->alti = ptrBmeValues->alti;
 
-	Serial.println("******* BME: ");
-	Serial.print("Temp: ");
-	Serial.print(ptrBmeValues->temp);
-	Serial.println(" *C");
+  Serial.println("******* BME: ");
+  Serial.print("Temp: ");
+  Serial.print(ptrBmeValues->temp);
+  Serial.println(" *C");
 
-	Serial.print("Humi: ");
-	Serial.print(ptrBmeValues->humi);
-	Serial.println(" %");
+  Serial.print("Humi: ");
+  Serial.print(ptrBmeValues->humi);
+  Serial.println(" %");
 
-	Serial.print("Pres: ");
-	Serial.print(ptrBmeValues->pres);
-	Serial.println(" hPa");
+  Serial.print("Pres: ");
+  Serial.print(ptrBmeValues->pres);
+  Serial.println(" hPa");
 
-	Serial.print("Alti: ");
-	Serial.print(ptrBmeValues->alti);
-	Serial.println(" m");
+  Serial.print("Alti: ");
+  Serial.print(ptrBmeValues->alti);
+  Serial.println(" m");
 
-	free(ptrBmeValues);
+  free(ptrBmeValues);
 }
 
 void printBMP280(struct sensor_values_t* ptr_sensor_values)
 {
-	struct BME_VALUES* ptrBmeValues = (struct BME_VALUES*)malloc(sizeof(struct BME_VALUES));
-	readBMP280(ptrBmeValues);
+  struct BME_VALUES* ptrBmeValues = (struct BME_VALUES*)malloc(sizeof(struct BME_VALUES));
+  readBMP280(ptrBmeValues);
 
-	ptr_sensor_values->temp2 = ptrBmeValues->temp;
-	ptr_sensor_values->pres2 = ptrBmeValues->pres;
-	ptr_sensor_values->alti2 = ptrBmeValues->alti;
+  ptr_sensor_values->temp2 = ptrBmeValues->temp;
+  ptr_sensor_values->pres2 = ptrBmeValues->pres;
+  ptr_sensor_values->alti2 = ptrBmeValues->alti;
 
-	Serial.println("******* BMP: ");
-	Serial.print("Temp: ");
-	Serial.print(ptrBmeValues->temp);
-	Serial.println(" *C");
+  Serial.println("******* BMP: ");
+  Serial.print("Temp: ");
+  Serial.print(ptrBmeValues->temp);
+  Serial.println(" *C");
 
-	Serial.print("Humi: ");
-	Serial.print(ptrBmeValues->humi);
-	Serial.println(" %");
+  Serial.print("Humi: ");
+  Serial.print(ptrBmeValues->humi);
+  Serial.println(" %");
 
-	Serial.print("Pres: ");
-	Serial.print(ptrBmeValues->pres);
-	Serial.println(" hPa");
+  Serial.print("Pres: ");
+  Serial.print(ptrBmeValues->pres);
+  Serial.println(" hPa");
 
-	Serial.print("Alti: ");
-	Serial.print(ptrBmeValues->alti);
-	Serial.println(" m");
+  Serial.print("Alti: ");
+  Serial.print(ptrBmeValues->alti);
+  Serial.println(" m");
 
-	free(ptrBmeValues);
+  free(ptrBmeValues);
 }
 
 void readBMP280(struct BME_VALUES* ptrBmpValues)
 {
-	ptrBmpValues->temp = bmp.readTemperature(); // C
-	// ptrBmpValues->humi = bmp.readHumidity();
-	ptrBmpValues->humi = -1.0;
-	ptrBmpValues->pres = bmp.readPressure(); // pa
-	ptrBmpValues->alti = bmp.readAltitude(SEALEVELPRESSURE_HPA); // m
+  ptrBmpValues->temp = bmp.readTemperature(); // C
+  // ptrBmpValues->humi = bmp.readHumidity();
+  ptrBmpValues->humi = -1.0;
+  ptrBmpValues->pres = bmp.readPressure(); // pa
+  ptrBmpValues->alti = bmp.readAltitude(SEALEVELPRESSURE_HPA); // m
 }
 
 void readBME280(struct BME_VALUES* ptrBmeValues)
 {
-	ptrBmeValues->temp = bme.readTemperature(); // C
-	ptrBmeValues->humi = bme.readHumidity(); // %
-	ptrBmeValues->pres = bme.readPressure(); // pa (divide by 100 to get hPa)
-	ptrBmeValues->alti = bme.readAltitude(SEALEVELPRESSURE_HPA); // m
+  ptrBmeValues->temp = bme.readTemperature(); // C
+  ptrBmeValues->humi = bme.readHumidity(); // %
+  ptrBmeValues->pres = bme.readPressure(); // pa (divide by 100 to get hPa)
+  ptrBmeValues->alti = bme.readAltitude(SEALEVELPRESSURE_HPA); // m
 }
 
 int setupBME280()
 {
-	if(!bme.begin(BME280_I2C_ADDR))
-	{
-		Serial.println("bme.begin() falhou...");
-		return -1;
-	}
-	else
-	{
-		Serial.println("bme.begin() OK");
-		return 0;
-	}
+  if (!bme.begin(BME280_I2C_ADDR))
+  {
+    Serial.println("bme.begin() falhou...");
+    return -1;
+  }
+  else
+  {
+    Serial.println("bme.begin() OK");
+    return 0;
+  }
 }
 
 int setupBMP280()
 {
-	if(!bmp.begin())
-	{
-		Serial.println("bmp.begin() falhou...");
-		return -1;
-	}
-	else
-	{
-		Serial.println("bmp.begin() OK");
-		return 0;
-	}
+  if (!bmp.begin())
+  {
+    Serial.println("bmp.begin() falhou...");
+    return -1;
+  }
+  else
+  {
+    Serial.println("bmp.begin() OK");
+    return 0;
+  }
 }
 
 int sendValuesToServer(struct sensor_values_t* ptr_sensor_values)
 {
-	WiFiClient client;
-	Serial.println(SERVER_HOST_URL);
-	Serial.print("Tentando conectar no servidor...");
-	int connectStatus = 999;
+  WiFiClient client;
+  Serial.println(SERVER_HOST_URL);
+  Serial.print("Tentando conectar no servidor...");
+  int connectStatus = 999;
 
-	if((connectStatus = client.connect(SERVER_HOST_URL, SERVER_PORT)))
-	{
-		Serial.println("OK");
+  if ((connectStatus = client.connect(SERVER_HOST_URL, SERVER_PORT)))
+  {
+    Serial.println("OK");
 
-		char query[300];
-		sprintf(query,
-				"GET "
-				"/saveweather?temp=%.2f&humi=%.2f&pres=%.2f&alti=%.2f&lux=%.2f&temp2=%."
-				"2f&pres2=%.2f&alti2=%.2f&magx=%d&magy=%d&magz=%d&azimuth=%d&bearing=%"
-				"d&direction=%s&mq5=%d&mq5ppm=%.2f&mq7=%d&mq7ppm=%.2f&unixtime=%lu "
-				"HTTP/1.0",
-				ptr_sensor_values->temp,
-				ptr_sensor_values->humi,
-				ptr_sensor_values->pres,
-				ptr_sensor_values->alti,
-				ptr_sensor_values->lux,
-				ptr_sensor_values->temp2,
-				ptr_sensor_values->pres2,
-				ptr_sensor_values->alti2,
-				ptr_sensor_values->mag_x,
-				ptr_sensor_values->mag_y,
-				ptr_sensor_values->mag_z,
-				ptr_sensor_values->mag_azimuth,
-				ptr_sensor_values->mag_bearing,
-				// ptr_sensor_values->mag_direction,
-				"AAA",
-				ptr_sensor_values->mq5,
-				ptr_sensor_values->mq5ppm,
-				ptr_sensor_values->mq7,
-				ptr_sensor_values->mq7ppm,
-				/*
-          ptr_sensor_values->year,
-          ptr_sensor_values->mes,
-          ptr_sensor_values->day,
-          ptr_sensor_values->hour,
-          ptr_sensor_values->minute,
-          ptr_sensor_values->second,
-          ptr_sensor_values->dayofweek,
-          ptr_sensor_values->daysSince1970
-        */
-				ptr_sensor_values->secondsSince1970 // &unixtime=%ld // tirei isso e parou de resetar
-		);
+    char query[300];
+    sprintf(query,
+            "GET "
+            "/saveweather?apikey=%s&temp=%.2f&humi=%.2f&pres=%.2f&alti=%.2f&lux=%.2f&temp2=%."
+            "2f&pres2=%.2f&alti2=%.2f&magx=%d&magy=%d&magz=%d&azimuth=%d&bearing=%"
+            "d&direction=%s&mq5=%d&mq5ppm=%.2f&mq7=%d&mq7ppm=%.2f&unixtime=%lu "
+            "HTTP/1.0",
+            CONST_STR_API_KEY,
+            ptr_sensor_values->temp,
+            ptr_sensor_values->humi,
+            ptr_sensor_values->pres,
+            ptr_sensor_values->alti,
+            ptr_sensor_values->lux,
+            ptr_sensor_values->temp2,
+            ptr_sensor_values->pres2,
+            ptr_sensor_values->alti2,
+            ptr_sensor_values->mag_x,
+            ptr_sensor_values->mag_y,
+            ptr_sensor_values->mag_z,
+            ptr_sensor_values->mag_azimuth,
+            ptr_sensor_values->mag_bearing,
+            // ptr_sensor_values->mag_direction,
+            "AAA",
+            ptr_sensor_values->mq5,
+            ptr_sensor_values->mq5ppm,
+            ptr_sensor_values->mq7,
+            ptr_sensor_values->mq7ppm,
+            /*
+              ptr_sensor_values->year,
+              ptr_sensor_values->mes,
+              ptr_sensor_values->day,
+              ptr_sensor_values->hour,
+              ptr_sensor_values->minute,
+              ptr_sensor_values->second,
+              ptr_sensor_values->dayofweek,
+              ptr_sensor_values->daysSince1970
+            */
+            ptr_sensor_values->secondsSince1970 // &unixtime=%ld // tirei isso e parou de resetar
+           );
 
-		Serial.printf("QUERY: %s\n", query);
-		Serial.println("-- SENDING QUERY TO SERVER --");
+    Serial.printf("QUERY: %s\n", query);
+    
+    Serial.println("-- SENDING QUERY TO SERVER --");
 
-		client.println(query);
+    client.println(query);
 
-		client.println();
-		Serial.println("-- QUERY SENT DONE --:");
+    client.println();
+    Serial.println("-- QUERY SENT DONE --:");
 
-		while(client.connected())
-		{
-			String response = client.readStringUntil('\n');
-			if(response == "\r")
-			{
-				Serial.println("RESPONSE HEADER:");
-				Serial.println(response);
-				break;
-			}
-		}
-		Serial.println("-- HEADER DONE --");
+    while (client.connected())
+    {
+      String response = client.readStringUntil('\n');
+      
+      Serial.println("- RAW HEADER:");
+      Serial.println(response);
+      
+      if (response == "\r")
+      {
+        Serial.println("RESPONSE HEADER:");
+        Serial.println(response);
+        break;
+      }
+    }
+    Serial.println("-- HEADER DONE --");
 
-		String response = client.readStringUntil('\n');
+    String response = client.readStringUntil('\n');
 
-		Serial.println("RESPONSE BODY:");
-		Serial.println(response);
-		Serial.println("-- RESPONSE DONE --");
-	}
-	else
-	{
-		Serial.print("ERROR: ");
-		Serial.println(connectStatus);
-		return -1;
-	}
-	return 0;
+    Serial.println("RESPONSE BODY:");
+    Serial.println(response);
+    Serial.println("-- RESPONSE DONE --");
+  }
+  else
+  {
+    Serial.print("ERROR: ");
+    Serial.println(connectStatus);
+    return -1;
+  }
+  
+  return 0;
 }
 
 void hardResetNodemcu()
 {
-	// ESP.reset(); // hard reset that can leave some register in the old state
-	ESP.restart(); // recomended method to clean everything
+  // WARN: ele vai crashar no primeiro reset que fizer chamando essa funcao apos fazer serial push/upload.
+  // Se ligar direto na tomada, ele funciona de primeira.
+  // ESP.reset(); // hard reset that can leave some register in the old state
+  ESP.restart(); // recomended method to clean everything
 }
 
 void setupWifi()
 {
-	Serial.print("Tentando conectar na rede wifi...");
-	WiFi.begin(WIFI_SS_ID, WIFI_SS_PASSWORD);
-	while(WiFi.status() != WL_CONNECTED)
-	{
-		delay(500);
-		Serial.print(".");
-	}
-	Serial.println("");
-	Serial.println("Conectado.");
-	Serial.print("Meu IP: ");
-	Serial.println(WiFi.localIP().toString());
+  Serial.print("Tentando conectar na rede wifi...");
+  WiFi.begin(WIFI_SS_ID, WIFI_SS_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("Conectado.");
+  Serial.print("Meu IP: ");
+  Serial.println(WiFi.localIP().toString());
 }
 
 void setupSerialMonitor()
 {
-	Serial.begin(115200);
-	Serial.println();
-	Serial.println("Hi");
+  Serial.begin(115200);
+  Serial.println();
+  Serial.println("Hi");
 }
 
 void setupBuiltInLed()
 {
-	pinMode(BUILT_IN_LED, OUTPUT);
-	digitalWrite(BUILT_IN_LED, LOW);
+  pinMode(BUILT_IN_LED, OUTPUT);
+  digitalWrite(BUILT_IN_LED, LOW);
 }
 
 void blinkBuiltInLed()
 {
-	digitalWrite(BUILT_IN_LED, LOW);
-	delay(1000);
-	digitalWrite(BUILT_IN_LED, HIGH);
-	delay(1000);
+  digitalWrite(BUILT_IN_LED, LOW);
+  delay(1000);
+  digitalWrite(BUILT_IN_LED, HIGH);
+  delay(1000);
 }
