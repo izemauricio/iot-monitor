@@ -1,0 +1,175 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #e3e3e3;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    font-family: sans-serif;
+    overflow-y: scroll;
+}
+
+.container {
+    width: 1000px;
+    height: fit-content;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.title {
+    display: flex;
+    width: 100%;
+    padding: 48px;
+}
+
+.gauge-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.gauge {
+    position: relative;
+    margin-right: 8px;
+    margin-top: 8px;
+    width: 200px;
+    height: 200px;
+    background: rgb(245, 245, 245);
+    background: linear-gradient(180deg, rgba(245, 245, 245, 1) 0%, rgb(226, 226, 226) 100%);
+    box-shadow: 1px 1px 1px #aaa;
+    font-size: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 8px;
+    border: 1px solid #bbb;
+    cursor: default;
+}
+
+.gauge:hover {
+    background: linear-gradient(180deg, rgb(226, 226, 226) 0%, rgba(245, 245, 245, 1) 100%);
+    transition-duration: 1s;
+}
+
+.gauge .label {
+    position: absolute;
+    font-size: 20px;
+    color: #333;
+    top: 25px;
+    left: 25px;
+}
+
+.gauge .value {
+    color: #333;
+    font-size: 24px;
+    font-family: monospace;
+    text-align: center;
+}
+
+.gauge .debug-value {
+    color: rgb(89, 89, 89);
+    font-size: 18px;
+    font-family: monospace;
+    text-align: center;
+}
+
+#lastpres {
+    color: rgb(255, 171, 44);
+}
+
+#lastalti {
+    color: rgb(86, 147, 0);
+}
+
+#lastmag {
+    color: rgb(157, 0, 255);
+}
+
+#lastazimuth {
+    color: rgb(255, 0, 255);
+}
+
+#lastlux {
+    color: rgb(0, 217, 255);
+}
+
+#lasttemp {
+    color: #f55;
+}
+
+#lastcurrent {
+    color: rgb(104, 0, 250);
+}
+
+#lasthumi {
+    color: #37f;
+}
+
+#lastpowertime, #lastweathertime, #weatherlines, #powerlines {
+    color: #333;
+}
+
+.text {
+    height: 100px;
+    border: 0px solid #000;
+    width: 100%;
+    margin-top: 20px;
+    background-color: #fff;
+}
+
+.header {
+    height: fit-content;
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 48px;
+}
+
+.chart-wrap {
+    margin-top: 20px;
+    width: 980px;
+    height: 250px;
+    border: 1px solid #333;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+    cursor: crosshair;
+}
+
+.chart {
+    width: 100%;
+    height: 100%;
+    background-color: #cca;
+    position: absolute;
+}
+
+.gauge.big {
+    width: 410px;
+}
+
+.text-card {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    padding: 56px;
+    padding-top: 0px;
+}
+
+.text-card p {
+    display: flex;
+    flex: 1;
+    font-size: 14px;
+    color: #343443;
+}

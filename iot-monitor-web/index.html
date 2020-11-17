@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+    <script src="index.js"></script>
+</head>
+
+<body onload="startup()">
+    <div class="container">
+        <div class="header">
+            <h1>Real-time Power and Weather Monitor</h1>
+        </div>
+
+        <div class="title">
+            <h2>Gauges</h2>
+        </div>
+        <div class="gauge-container">
+            <div class="gauge">
+                <div class="label">Current</div>
+                <div class="value" id="lastcurrent">00</div>
+            </div>
+            <div class="gauge">
+                <div class="label">Thermometer</div>
+                <div class="value" id="lasttemp">00</div>
+            </div>
+            <div class="gauge">
+                <div class="label">Hygrometer</div>
+                <div class="value" id="lasthumi">00</div>
+            </div>
+            <div class="gauge">
+                <div class="label">Barometer</div>
+                <div class="value" id="lastpres">00</div>
+            </div>
+            <div class="gauge">
+                <div class="label">Altimeter</div>
+                <div class="value" id="lastalti">00</div>
+            </div>
+            <div class="gauge">
+                <div class="label">Luxmeter</div>
+                <div class="value" id="lastlux">00</div>
+            </div>
+            <div class="gauge">
+                <div class="label">Azimuth</div>
+                <div class="value" id="lastazimuth">00</div>
+            </div>
+            <div class="gauge">
+                <div class="label">Magnetic Field</div>
+                <div class="value" id="lastmag">00</div>
+            </div>
+        </div>
+
+        <div class="title">
+            <h2>Server Information</h2>
+        </div>
+        <div class="gauge-container">
+            <div class="gauge">
+                <div class="label">Last weather time</div>
+                <div class="debug-value" id="lastweathertime">00</div>
+            </div>
+            <div class="gauge">
+                <div class="label">Last power time</div>
+                <div class="debug-value" id="lastpowertime">00</div>
+            </div>
+            <div class="gauge">
+                <div class="label">Weather lines</div>
+                <div class="debug-value" id="weatherlines">00</div>
+            </div>
+            <div class="gauge">
+                <div class="label">Power lines</div>
+                <div class="debug-value" id="powerlines">00</div>
+            </div>
+        </div>
+
+        <div class="title">
+            <h2>Historical Data Chart</h2>
+        </div>
+        <div class="chart-wrap">
+            <div class="chart" id="powergraph"></div>
+        </div>
+        <div class="chart-wrap">
+            <div class="chart" id="tempchart"></div>
+        </div>
+        <div class="chart-wrap">
+            <div class="chart" id="humichart"></div>
+        </div>
+        <div class="chart-wrap">
+            <div class="chart" id="preschart"></div>
+        </div>
+        <div class="chart-wrap">
+            <div class="chart" id="luxchart"></div>
+        </div>
+        <div class="text"></div>
+
+        <div class="title">
+            <h2>About</h2>
+        </div>
+        <div class="text-card">
+            <p>
+                This project uses several sensors that comunicate via SPI or I2C with a NodeMCU that grabs all the data
+                to send to a remote server running NodeJS.
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>
